@@ -136,3 +136,15 @@ crashlytics-build.properties
 
 # Auto-generated cache in Assets folder
 /[Aa]ssets/[Ss]ceneDependencyCache*
+
+# Test exports and common output
+/ExportTest/
+/TestOutput/
+/Export/
+/Exports/
+/*.fbx
+/*_Textures/
+/[Tt]est[Rr]esults/
+TestResults*.xml
+*.tmp.fbx
+*.fbx.tmp
