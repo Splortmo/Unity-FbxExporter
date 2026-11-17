@@ -71,6 +71,54 @@ namespace FbxExporter
             return result;
         }
 
+        /// <summary>
+        /// WebGL: exports into the browser's temporary file system and hands the result to the user as a
+        /// browser download. With textures that is a zip (the .fbx plus its texture folder, so extracting it into any
+        /// folder keeps the texture links working); without textures it is the plain .fbx.
+        /// Browsers don't let a page write into an arbitrary folder, so the user picks the folder when saving/extracting.
+        /// Only available in WebGL player builds; elsewhere the result fails with a NotSupportedException.
+        /// </summary>
+        /// <param name="fileName">Download name, e.g. "character" or "character.fbx".</param>
+        public static FbxExportResult ExportAndDownload(string fileName, IEnumerable<GameObject> objects, FbxExportOptions options = null)
+        {
+#if UNITY_WEBGL && !UNITY_EDITOR
+            string name = Path.GetFileNameWithoutExtension(string.IsNullOrWhiteSpace(fileName) ? "export" : fileName);
+            foreach (char c in Path.GetInvalidFileNameChars()) name = name.Replace(c, '_');
+            if (string.IsNullOrWhiteSpace(name)) name = "export";
+
+            string dir = Path.Combine(Application.temporaryCachePath, "fbx_" + Guid.NewGuid().ToString("N"));
+            FbxExportResult result = null;
+            try
+            {
+                result = Export(Path.Combine(dir, name + ".fbx"), objects, options);
+                if (!result.Success) return result;
+
+                var files = new List<string> { result.FilePath };
+                files.AddRange(result.TextureFiles);
+                WebDownload.DownloadFiles(files, dir, name + ".zip");
+            }
+            catch (Exception e)
+            {
+                if (result == null) result = new FbxExportResult();
+                result.Success = false;
+                result.Error = e;
+            }
+            finally
+            {
+                // The download already copied the bytes out; free the virtual file system.
+                try { if (Directory.Exists(dir)) Directory.Delete(dir, true); }
+                catch (Exception) { /* best effort */ }
+            }
+            return result;
+#else
+            return new FbxExportResult
+            {
+                Success = false,
+                Error = new NotSupportedException("ExportAndDownload is only available in WebGL player builds. Use Export() with a file path.")
+            };
+#endif
+        }
+
         private static void TryDelete(string file)
         {
             try { if (!string.IsNullOrEmpty(file) && File.Exists(file)) File.Delete(file); }

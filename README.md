@@ -1,7 +1,7 @@
 # FBX Exporter (runtime + editor)
 
 Standalone FBX exporter for Unity. No dependency on Autodesk's FBX SDK or the `com.unity.formats.fbx` package.
-Works in the Editor and in player builds.
+Works in the Editor and in player builds, including WebGL.
 
 **Exports:** hierarchy, static meshes (MeshRenderer), skinned meshes (SkinnedMeshRenderer) with skeleton,
 skin weights and bind pose, blend shapes, multiple materials per mesh, UVs (all channels), normals, vertex colors,
@@ -74,6 +74,21 @@ pass an absolute path (e.g. under `Application.persistentDataPath`). Must be cal
 - Select the common parent of a character's meshes and skeleton. Bones outside the exported hierarchy are
   skipped with a warning.
 
+## WebGL
+
+In a WebGL build a page can't write into a folder, so use `ExportAndDownload`. It exports in the browser's temporary
+file system and starts a browser download: a zip containing the `.fbx` and its texture folder (or just the `.fbx`
+when there are no textures or they are embedded). Extract the zip into any folder and the texture links keep working.
+
+```csharp
+var result = FbxExport.ExportAndDownload("character", new[] { character }, new FbxExportOptions());
+if (!result.Success) Debug.LogError(result.Error);
+```
+
+- Meshes must have **Read/Write enabled**: WebGL can't read GPU buffers back, so non-readable meshes are skipped with a warning.
+- The zip is built in memory (stored, not compressed), so very large exports need enough browser memory.
+- `ExportAndDownload` only works in WebGL player builds; elsewhere use `Export` with a path.
+
 ## Read/Write (non-readable) meshes
 
 Meshes are never modified or converted: the exporter does not change import settings, so Read/Write does not
@@ -84,6 +99,7 @@ have to be enabled and is not enabled for you.
 | Editor | Exported normally. Non-readable meshes can still be read, no warning. |
 | Player build, Read/Write on | Exported normally. |
 | Player build, Read/Write off | Exported by reading the vertex and index buffers back from the GPU (with a warning). Geometry, normals, UVs, vertex colors, skin weights (up to 4 per vertex) and bind poses are kept. **Blend shapes are skipped.** |
+| WebGL | Not supported: non-readable meshes are skipped with a warning. Enable Read/Write. |
 | GPU readback unavailable | The mesh is skipped with a warning and its node is exported empty. |
 
 To get blend shapes (or full skin weights) in a player build, enable **Read/Write** on those meshes' import settings.
