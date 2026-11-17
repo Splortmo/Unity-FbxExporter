@@ -10,7 +10,7 @@ namespace FbxExporter.Fbx
     /// Writes an FBX node tree as a binary FBX file (version 7.4, 32-bit offsets).
     /// This is the format read by Blender and by the Autodesk FBX SDK (3ds Max, Maya, ...).
     /// </summary>
-    public static class FbxBinaryWriter
+    internal static class FbxBinaryWriter
     {
         public const int Version = 7400;
 

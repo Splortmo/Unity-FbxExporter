@@ -28,6 +28,7 @@ namespace FbxExporter
         {
             options = options ?? new FbxExportOptions();
             var result = new FbxExportResult();
+            string tmp = null;
             try
             {
                 if (string.IsNullOrEmpty(path)) throw new ArgumentException("Output path is empty", nameof(path));
@@ -46,7 +47,7 @@ namespace FbxExporter
                 List<FbxNode> document = builder.Build(objects, path);
 
                 // Write to a temp file first so a failed export never leaves a truncated .fbx behind.
-                string tmp = path + ".tmp";
+                tmp = path + ".tmp";
                 using (var fs = new FileStream(tmp, FileMode.Create, FileAccess.ReadWrite, FileShare.None, 1 << 16))
                 {
                     if (options.Format == FbxFormat.Binary) FbxBinaryWriter.Write(fs, document);
@@ -54,6 +55,7 @@ namespace FbxExporter
                 }
                 if (File.Exists(path)) File.Delete(path);
                 File.Move(tmp, path);
+                tmp = null;
 
                 result.Success = true;
             }
@@ -61,8 +63,18 @@ namespace FbxExporter
             {
                 result.Success = false;
                 result.Error = e;
+                // Don't leave partial output behind.
+                TryDelete(tmp);
+                foreach (var f in result.TextureFiles) TryDelete(f);
+                result.TextureFiles.Clear();
             }
             return result;
+        }
+
+        private static void TryDelete(string file)
+        {
+            try { if (!string.IsNullOrEmpty(file) && File.Exists(file)) File.Delete(file); }
+            catch (Exception) { /* best effort */ }
         }
     }
 }

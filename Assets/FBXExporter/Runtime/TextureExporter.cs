@@ -205,8 +205,7 @@ namespace FbxExporter
         private static void DestroyObj(Object o)
         {
             if (o == null) return;
-            if (Application.isPlaying) Object.Destroy(o);
-            else Object.DestroyImmediate(o);
+            Object.DestroyImmediate(o); // temporaries we created; Destroy() would keep them alive until end of frame
         }
     }
 }

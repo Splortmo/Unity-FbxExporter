@@ -10,7 +10,7 @@ namespace FbxExporter.Fbx
     /// Writes an FBX node tree as an ASCII FBX 7.4 file.
     /// Note: the Autodesk FBX SDK (3ds Max, Maya, Unity) reads ASCII FBX, but Blender's importer does NOT.
     /// </summary>
-    public static class FbxAsciiWriter
+    internal static class FbxAsciiWriter
     {
         private const int ValuesPerLine = 64;
 

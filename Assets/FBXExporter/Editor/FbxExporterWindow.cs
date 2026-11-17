@@ -97,6 +97,7 @@ namespace FbxExporter.Editor
             EditorGUILayout.LabelField("Scene", EditorStyles.boldLabel);
             _options.IncludeInactive = EditorGUILayout.Toggle("Include Inactive", _options.IncludeInactive);
             _options.PreserveWorldTransform = EditorGUILayout.Toggle("Keep World Position", _options.PreserveWorldTransform);
+            _options.ExportInBindPose = EditorGUILayout.Toggle(new GUIContent("Export In Bind Pose", "Write bones in their bind pose and reset blend shapes, instead of the current pose."), _options.ExportInBindPose);
 
             EditorGUILayout.Space();
             EditorGUILayout.LabelField("Meshes", EditorStyles.boldLabel);

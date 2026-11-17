@@ -131,8 +131,24 @@ namespace FbxExporter
             var d = new MeshData { Name = mesh.name, VertexCount = mesh.vertexCount };
             int vc = d.VertexCount;
 
+            // Raw access is needed to read the buffers; restore the shared mesh's flags afterwards.
+            var oldVertexTarget = mesh.vertexBufferTarget;
+            var oldIndexTarget = mesh.indexBufferTarget;
             mesh.vertexBufferTarget |= GraphicsBuffer.Target.Raw;
             mesh.indexBufferTarget |= GraphicsBuffer.Target.Raw;
+            try
+            {
+                return ReadGpuBuffers(mesh, d, vc, warnings);
+            }
+            finally
+            {
+                mesh.vertexBufferTarget = oldVertexTarget;
+                mesh.indexBufferTarget = oldIndexTarget;
+            }
+        }
+
+        private static MeshData ReadGpuBuffers(Mesh mesh, MeshData d, int vc, List<string> warnings)
+        {
 
             var streams = new byte[mesh.vertexBufferCount][];
             var strides = new int[mesh.vertexBufferCount];

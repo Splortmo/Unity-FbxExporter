@@ -98,7 +98,7 @@ namespace FbxExporter
             var selectedSet = new HashSet<Transform>();
             foreach (var go in gameObjects)
             {
-                if (go == null || !selectedSet.Add(go.transform)) continue;
+                if (go == null || IsIgnored(go.transform) || !selectedSet.Add(go.transform)) continue;
                 selected.Add(go.transform);
             }
 
@@ -115,9 +115,24 @@ namespace FbxExporter
             }
         }
 
+        private bool IsIgnored(Transform t)
+        {
+            var filter = _o.IgnoredNameFilter;
+            if (filter == null) return false;
+            try
+            {
+                return filter(t.name);
+            }
+            catch (Exception e)
+            {
+                throw new InvalidOperationException("IgnoredNameFilter threw for '" + t.name + "': " + e.Message, e);
+            }
+        }
+
         private void Collect(Transform t, Transform root)
         {
             if (!_o.IncludeInactive && !t.gameObject.activeInHierarchy) return;
+            if (IsIgnored(t)) return; // skips the whole subtree
             _order.Add(t);
             _exported.Add(t);
             _rootOf[t] = root;
@@ -366,7 +381,14 @@ namespace FbxExporter
         {
             Vector3 lp, ls;
             Quaternion lr;
-            if (_rootOf[t] == t)
+            if (_o.ExportInBindPose && _canonicalBind.TryGetValue(t, out var bind))
+            {
+                Matrix4x4 parentWorld = Matrix4x4.identity;
+                if (_rootOf[t] != t && t.parent != null)
+                    parentWorld = _canonicalBind.TryGetValue(t.parent, out var pb) ? pb : World(t.parent);
+                DecomposeTRS(parentWorld.inverse * bind, out lp, out lr, out ls);
+            }
+            else if (_rootOf[t] == t)
             {
                 if (_o.PreserveWorldTransform)
                 {
@@ -388,6 +410,16 @@ namespace FbxExporter
                 ls = t.localScale;
             }
             WriteModel(t.name, id, type, visible, lp, lr, ls);
+        }
+
+        private static void DecomposeTRS(Matrix4x4 m, out Vector3 pos, out Quaternion rot, out Vector3 scale)
+        {
+            pos = m.GetColumn(3);
+            Vector3 cx = m.GetColumn(0), cy = m.GetColumn(1), cz = m.GetColumn(2);
+            scale = new Vector3(cx.magnitude, cy.magnitude, cz.magnitude);
+            if (Vector3.Dot(Vector3.Cross(cx, cy), cz) < 0f) scale.x = -scale.x; // mirrored
+            if (Mathf.Abs(scale.x) < 1e-8f || scale.y < 1e-8f || scale.z < 1e-8f) { rot = Quaternion.identity; return; }
+            rot = Quaternion.LookRotation(cz / scale.z, cy / scale.y);
         }
 
         private void WriteModel(string name, long id, string type, bool visible, Vector3 lp, Quaternion lr, Vector3 ls)
@@ -1105,7 +1137,7 @@ namespace FbxExporter
                 sg.AddArray("Normals", dn.ToArray());
 
                 float frameWeight = shape.FrameWeight > 0f ? shape.FrameWeight : 100f;
-                double percent = smr.GetBlendShapeWeight(s) / frameWeight * 100.0;
+                double percent = _o.ExportInBindPose ? 0.0 : smr.GetBlendShapeWeight(s) / frameWeight * 100.0;
 
                 long chId = NewId();
                 var ch = AddObject("Deformer", chId, new FbxObjectName(shape.Name, "SubDeformer"), "BlendShapeChannel");

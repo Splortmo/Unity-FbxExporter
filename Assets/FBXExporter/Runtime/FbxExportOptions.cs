@@ -16,11 +16,25 @@ namespace FbxExporter
     {
         public FbxFormat Format = FbxFormat.Binary;
 
+        /// <summary>
+        /// Optional filter on GameObject names. Return true to skip an object; it is not exported and neither
+        /// is anything below it. Example: <c>name =&gt; name.EndsWith("_helper")</c>.
+        /// Not serialized (code only), so it is not saved with the Editor settings.
+        /// </summary>
+        public Func<string, bool> IgnoredNameFilter { get; set; }
+
         /// <summary>Include inactive GameObjects (exported with Visibility = 0).</summary>
         public bool IncludeInactive = true;
 
         /// <summary>Keep the world placement of the exported roots. When false, every root is placed at the origin.</summary>
         public bool PreserveWorldTransform = true;
+
+        /// <summary>
+        /// false (default): keep the pose the skeleton has at export time (snapshot).
+        /// true: write bones in their bind pose (T-pose/A-pose the mesh was skinned in) and reset blend shape
+        /// weights to 0. Only bones the skinned meshes use (and nodes between them) are affected.
+        /// </summary>
+        public bool ExportInBindPose = false;
 
         /// <summary>Export material textures as image files.</summary>
         public bool ExportTextures = true;

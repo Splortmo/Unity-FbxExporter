@@ -6,7 +6,7 @@ namespace FbxExporter.Fbx
     /// An FBX object name such as "Model::Hips". Binary files store it as "Hips\0\x01Model",
     /// ASCII files as "Model::Hips".
     /// </summary>
-    public readonly struct FbxObjectName
+    internal readonly struct FbxObjectName
     {
         public readonly string Name;
         public readonly string Class;
@@ -19,7 +19,7 @@ namespace FbxExporter.Fbx
     }
 
     /// <summary>A single-byte char property (binary type 'C'), e.g. "Shading: Y".</summary>
-    public readonly struct FbxChar
+    internal readonly struct FbxChar
     {
         public readonly char Value;
         public FbxChar(char value) { Value = value; }
@@ -30,7 +30,7 @@ namespace FbxExporter.Fbx
     /// bool, FbxChar, short, int, long, float, double, string, FbxObjectName, byte[] (raw),
     /// int[], long[], float[], double[], bool[].
     /// </summary>
-    public sealed class FbxNode
+    internal sealed class FbxNode
     {
         public readonly string Name;
         public readonly List<object> Properties = new List<object>();
@@ -67,7 +67,7 @@ namespace FbxExporter.Fbx
     }
 
     /// <summary>Helper for writing a "Properties70" block.</summary>
-    public sealed class FbxProps70
+    internal sealed class FbxProps70
     {
         private readonly FbxNode _node;
 
@@ -75,8 +75,6 @@ namespace FbxExporter.Fbx
         {
             _node = parent.Add("Properties70");
         }
-
-        public bool IsEmpty => _node.Children.Count == 0;
 
         private FbxNode P(string name, string type, string label, string flags)
         {
