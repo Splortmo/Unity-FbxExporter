@@ -14,6 +14,12 @@ Developed on Unity 6000.3.
 **Format:** binary FBX 7.4 by default. This is what Blender, 3ds Max, Maya and Unity read.
 ASCII FBX is available as an option. Autodesk apps read it, but **Blender cannot import ASCII FBX**.
 
+## Example
+
+![UnityChan’s Victory pose in Unity alongside the imported FBX in Blender](example-0.png)
+
+UnityChan character © Unity Technologies Japan/UCL.
+
 ## Editor
 
 - `GameObject > Export to FBX...` or `Tools > FBX Exporter > Export Selected...`: exports the selected objects
