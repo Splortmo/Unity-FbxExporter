@@ -1,6 +1,6 @@
 name: Release Unity package
 
-# Builds Assets/FBXExporter (+ README.md) into a .unitypackage and publishes it as a
+# Builds Assets/FBXExporter (+ README.md and LICENSE.txt) into a .unitypackage and publishes it as a
 # GitHub release, but only when the project version (Player Settings > Version,
 # i.e. bundleVersion in ProjectSettings.asset) has no release tag yet.
 
@@ -65,7 +65,8 @@ jobs:
         run: |
           out="FBXExporter-$VERSION.unitypackage"
           python .github/scripts/build_unitypackage.py Assets/FBXExporter "$out" \
-            --extra README.md:Assets/FBXExporter/README.md
+            --extra README.md:Assets/FBXExporter/README.md \
+            --extra LICENSE.txt:Assets/FBXExporter/LICENSE.txt
           echo "file=$out" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub release

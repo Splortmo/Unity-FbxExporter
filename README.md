@@ -108,6 +108,10 @@ have to be enabled and is not enabled for you.
 To get blend shapes (or full skin weights) in a player build, enable **Read/Write** on those meshes' import settings.
 The `ForceRuntimeReadback` option lets you test the GPU path inside the Editor.
 
+## License
+
+FBX Exporter is licensed under the [MIT License with the Commons Clause 1.0](LICENSE.txt).
+
 ## AI disclosure
 
 This project was developed with the assistance of AI (Claude by Anthropic). Code was AI-assisted and reviewed and tested by the author.
