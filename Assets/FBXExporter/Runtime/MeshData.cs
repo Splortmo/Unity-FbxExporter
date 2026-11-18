@@ -53,7 +53,7 @@ namespace FbxExporter
             }
 
 #if UNITY_WEBGL && !UNITY_EDITOR
-            // WebGL can't read GPU buffers back, so the mesh itself must be Read/Write enabled.
+            // WebGL has no GPU readback, so the mesh must be Read/Write enabled.
             warnings.Add(mesh.isReadable
                 ? $"Mesh '{mesh.name}' could not be read and WebGL has no GPU readback fallback; it was skipped."
                 : $"Mesh '{mesh.name}' is not Read/Write enabled, which WebGL needs to export it. Enable Read/Write in its import settings.");
@@ -139,7 +139,7 @@ namespace FbxExporter
             var d = new MeshData { Name = mesh.name, VertexCount = mesh.vertexCount };
             int vc = d.VertexCount;
 
-            // Raw access is needed to read the buffers; restore the shared mesh's flags afterwards.
+            // Enable raw buffer access for the read, then restore the original targets.
             var oldVertexTarget = mesh.vertexBufferTarget;
             var oldIndexTarget = mesh.indexBufferTarget;
             mesh.vertexBufferTarget |= GraphicsBuffer.Target.Raw;

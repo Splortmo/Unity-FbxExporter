@@ -7,9 +7,9 @@ using System.Text;
 namespace FbxExporter
 {
     /// <summary>
-    /// Hands files to the user as browser downloads on WebGL, where files written by the app only live in the
-    /// browser's virtual file system. Several files are packed into one zip that keeps the relative folder layout,
-    /// so extracting it gives the .fbx next to its texture folder.
+    /// Browser downloads for WebGL player builds. Files written by the app only exist in the browser's virtual
+    /// file system, so they are downloaded as a single file or, for several files, one zip with the folder layout kept.
+    /// Other platforms throw PlatformNotSupportedException.
     /// </summary>
     internal static class WebDownload
     {
@@ -28,8 +28,8 @@ namespace FbxExporter
         }
 
         /// <summary>
-        /// A single file is downloaded as itself, several as one zip. Entry names are relative to baseDir.
-        /// Returns the name of the downloaded file.
+        /// Downloads one file as itself, or several as a zip with entry names relative to baseDir.
+        /// Returns the downloaded file name.
         /// </summary>
         public static string DownloadFiles(IList<string> files, string baseDir, string zipName)
         {
@@ -60,8 +60,8 @@ namespace FbxExporter
     }
 
     /// <summary>
-    /// Minimal zip writer that stores entries uncompressed. Avoids System.IO.Compression, whose deflate needs
-    /// native zlib that WebGL builds don't have. Images are already compressed, so little is lost.
+    /// Zip writer that stores entries uncompressed. Used instead of System.IO.Compression, which needs native
+    /// zlib that WebGL builds lack.
     /// </summary>
     internal sealed class StoreZipWriter : IDisposable
     {

@@ -7,17 +7,12 @@ using UnityEngine;
 namespace FbxExporter
 {
     /// <summary>
-    /// Runtime FBX exporter. Exports static (MeshRenderer) and skinned (SkinnedMeshRenderer) meshes with their
-    /// hierarchy, materials, textures, skeletons, skin weights and blend shapes.
-    ///
-    /// Usage:
+    /// Exports GameObject hierarchies (MeshRenderer and SkinnedMeshRenderer) to FBX, including materials,
+    /// textures, skeletons, skin weights and blend shapes. Main thread only.
     /// <code>
     /// var result = FbxExport.Export("C:/out/character.fbx", new[] { myGameObject });
     /// if (!result.Success) Debug.LogError(result.Error);
     /// </code>
-    /// The same call works on every platform. In WebGL player builds the output is handed to the user as a
-    /// browser download instead of being written to a folder.
-    /// Must be called from the main thread (it reads meshes/textures through Unity APIs).
     /// </summary>
     public static class FbxExport
     {
@@ -27,18 +22,10 @@ namespace FbxExporter
         }
 
         /// <summary>
-        /// Exports <paramref name="objects"/> (each with its children) to an FBX file.
-        /// <para>
-        /// Editor and desktop/mobile players: writes the .fbx (plus its texture folder) to <paramref name="path"/>.
-        /// The Editor always does this, also with the build target set to WebGL.
-        /// </para>
-        /// <para>
-        /// WebGL player builds: a page can't write into a folder, so the export is written to the browser's temporary
-        /// file system and then downloaded. Only the file name of <paramref name="path"/> is used. With separate texture
-        /// files the download is a zip holding the .fbx and its texture folder (extracting it anywhere keeps the texture
-        /// links working); otherwise it is the plain .fbx. <see cref="FbxExportResult.FilePath"/> is the downloaded file
-        /// name and <see cref="FbxExportResult.TextureFiles"/> is empty, since the temporary files are deleted afterwards.
-        /// </para>
+        /// Exports <paramref name="objects"/> and their children to an FBX file.
+        /// <para>Editor, desktop and mobile (including the Editor with a WebGL build target): writes the .fbx and its texture folder to <paramref name="path"/>.</para>
+        /// <para>WebGL player: only the file name of <paramref name="path"/> is used. The result is downloaded through the browser as a zip (.fbx plus texture folder) or as a plain .fbx when there are no separate texture files.
+        /// <see cref="FbxExportResult.FilePath"/> is the downloaded file name and <see cref="FbxExportResult.TextureFiles"/> is empty.</para>
         /// </summary>
         public static FbxExportResult Export(string path, IEnumerable<GameObject> objects, FbxExportOptions options)
         {
@@ -49,7 +36,7 @@ namespace FbxExporter
 #endif
         }
 
-        /// <summary>Shared export used on every platform: builds the FBX document and writes it (and texture files) to disk.</summary>
+        /// <summary>Builds the FBX document and writes it and its texture files to disk.</summary>
         private static FbxExportResult ExportToFile(string path, IEnumerable<GameObject> objects, FbxExportOptions options)
         {
             options = options ?? new FbxExportOptions();
@@ -72,7 +59,7 @@ namespace FbxExporter
                 var builder = new FbxSceneBuilder(path, options, result);
                 List<FbxNode> document = builder.Build(objects, path);
 
-                // Write to a temp file first so a failed export never leaves a truncated .fbx behind.
+                // Write to a temp file, then move it into place.
                 tmp = path + ".tmp";
                 using (var fs = new FileStream(tmp, FileMode.Create, FileAccess.ReadWrite, FileShare.None, 1 << 16))
                 {
@@ -89,7 +76,7 @@ namespace FbxExporter
             {
                 result.Success = false;
                 result.Error = e;
-                // Don't leave partial output behind.
+                // Remove partial output.
                 TryDelete(tmp);
                 foreach (var f in result.TextureFiles) TryDelete(f);
                 result.TextureFiles.Clear();
@@ -98,7 +85,7 @@ namespace FbxExporter
         }
 
 #if UNITY_WEBGL && !UNITY_EDITOR
-        /// <summary>WebGL player: the shared export into a temporary folder, followed by a browser download of the output.</summary>
+        /// <summary>WebGL player: exports into a temporary folder, then downloads the output through the browser.</summary>
         private static FbxExportResult ExportAndDownload(string path, IEnumerable<GameObject> objects, FbxExportOptions options)
         {
             FbxExportResult result = null;
@@ -118,7 +105,7 @@ namespace FbxExporter
                 var files = new List<string> { result.FilePath };
                 files.AddRange(result.TextureFiles);
                 result.FilePath = WebDownload.DownloadFiles(files, dir, name + ".zip");
-                result.TextureFiles.Clear(); // they lived in the temporary folder, which is deleted below
+                result.TextureFiles.Clear(); // temporary files are deleted below
             }
             catch (Exception e)
             {
@@ -129,7 +116,7 @@ namespace FbxExporter
             }
             finally
             {
-                // The download already copied the bytes out; free the virtual file system.
+                // Free the temporary files in the browser's virtual file system.
                 try { if (dir != null && Directory.Exists(dir)) Directory.Delete(dir, true); }
                 catch (Exception) { /* best effort */ }
             }

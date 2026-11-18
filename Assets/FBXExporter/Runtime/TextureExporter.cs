@@ -10,8 +10,8 @@ using Object = UnityEngine.Object;
 namespace FbxExporter
 {
     /// <summary>
-    /// Turns Unity textures into image files (or embedded bytes) that DCC tools can read.
-    /// Works at runtime on non-readable and compressed textures by rendering them through a RenderTexture.
+    /// Converts Unity textures to image files or embedded bytes. Non-readable and compressed textures are
+    /// read back through a RenderTexture.
     /// </summary>
     internal sealed class TextureExporter
     {

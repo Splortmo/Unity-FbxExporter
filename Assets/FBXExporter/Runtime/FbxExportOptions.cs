@@ -17,9 +17,8 @@ namespace FbxExporter
         public FbxFormat Format = FbxFormat.Binary;
 
         /// <summary>
-        /// Optional filter on GameObject names. Return true to skip an object; it is not exported and neither
-        /// is anything below it. Example: <c>name =&gt; name.EndsWith("_helper")</c>.
-        /// Not serialized (code only), so it is not saved with the Editor settings.
+        /// Returns true for GameObject names to skip, along with their children.
+        /// Example: <c>name =&gt; name.EndsWith("_helper")</c>. Not serialized.
         /// </summary>
         public Func<string, bool> IgnoredNameFilter { get; set; }
 
@@ -30,28 +29,26 @@ namespace FbxExporter
         public bool PreserveWorldTransform = true;
 
         /// <summary>
-        /// false (default): keep the pose the skeleton has at export time (snapshot).
-        /// true: write bones in their bind pose (T-pose/A-pose the mesh was skinned in) and reset blend shape
-        /// weights to 0. Only bones the skinned meshes use (and nodes between them) are affected.
+        /// false: export the skeleton in its current pose.
+        /// true: export bones in their bind pose and reset blend shape weights to 0.
         /// </summary>
         public bool ExportInBindPose = false;
 
         /// <summary>Export material textures as image files.</summary>
         public bool ExportTextures = true;
 
-        /// <summary>Embed textures inside the FBX (binary only). External files are not written when embedding.</summary>
+        /// <summary>Embed textures in the FBX instead of writing files. Binary format only.</summary>
         public bool EmbedTextures = false;
 
         /// <summary>
-        /// Folder (relative to the FBX file) that receives exported textures.
-        /// "{name}" is replaced by the FBX file name without extension.
+        /// Texture folder, relative to the FBX file. "{name}" becomes the FBX file name without extension.
         /// </summary>
         public string TextureFolder = "{name}_Textures";
 
-        /// <summary>In the Editor, copy the original source image file (png/jpg/tga...) instead of re-encoding when possible.</summary>
+        /// <summary>Editor only: copy the original image file instead of re-encoding the texture. Players always re-encode.</summary>
         public bool PreferSourceTextureFiles = true;
 
-        /// <summary>Merge vertices that Unity split for UV seams / hard edges back into shared control points.</summary>
+        /// <summary>Merge vertices split by UV seams or hard edges.</summary>
         public bool WeldVertices = true;
 
         /// <summary>Export blend shapes (morph targets) of skinned meshes.</summary>
@@ -60,7 +57,7 @@ namespace FbxExporter
         /// <summary>Export vertex colors when the mesh has them.</summary>
         public bool ExportVertexColors = true;
 
-        /// <summary>Testing aid: always read meshes and textures the way a player build without Read/Write access would.</summary>
+        /// <summary>For testing: read meshes and textures through the GPU path used for non-readable assets.</summary>
         public bool ForceRuntimeReadback = false;
     }
 

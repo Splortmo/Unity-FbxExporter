@@ -7,11 +7,9 @@ using UnityEngine;
 namespace FbxExporter
 {
     /// <summary>
-    /// Converts a set of Unity GameObject hierarchies into an FBX node tree.
-    ///
-    /// Coordinate conversion: Unity is left-handed Y-up (meters); the FBX file is right-handed Y-up
-    /// with UnitScaleFactor = 100 (1 unit = 1 m). Conversion mirrors the X axis:
-    ///   position (x,y,z) -> (-x,y,z),  rotation (x,y,z,w) -> (x,-y,-z,w),  triangle winding reversed.
+    /// Converts Unity GameObject hierarchies into an FBX node tree.
+    /// Unity (left-handed, Y-up) is converted to FBX (right-handed, Y-up, 1 unit = 1 m) by mirroring X:
+    /// position (x,y,z) -> (-x,y,z), rotation (x,y,z,w) -> (x,-y,-z,w), triangle winding reversed.
     /// </summary>
     internal sealed class FbxSceneBuilder
     {
@@ -33,7 +31,7 @@ namespace FbxExporter
         private readonly Dictionary<Transform, long> _modelIds = new Dictionary<Transform, long>();
         private readonly HashSet<Transform> _limbs = new HashSet<Transform>();
 
-        // One bind (rest) matrix per bone, shared by every skinned mesh (see ComputeCanonicalBinds).
+        // One shared bind matrix per bone (see ComputeCanonicalBinds).
         private readonly Dictionary<Transform, Matrix4x4> _canonicalBind = new Dictionary<Transform, Matrix4x4>();
 
         private readonly Dictionary<Material, long> _materials = new Dictionary<Material, long>();
@@ -104,7 +102,7 @@ namespace FbxExporter
 
             foreach (var t in selected)
             {
-                // Skip objects whose ancestor is also selected; they are exported as part of that hierarchy.
+                // Skip objects whose ancestor is also selected.
                 bool nested = false;
                 for (var p = t.parent; p != null; p = p.parent)
                     if (selectedSet.Contains(p)) { nested = true; break; }
@@ -162,8 +160,7 @@ namespace FbxExporter
 
                 foreach (var b in meshBones) bones.Add(b);
 
-                // Everything between this mesh's bones and their lowest common ancestor is part of the skeleton
-                // (e.g. hips/spine nodes that carry no weights). Otherwise importers split the skeleton apart.
+                // Nodes between this mesh's bones and their lowest common ancestor are also limbs, so importers keep one skeleton.
                 var lca = CommonAncestor(meshBones);
                 if (lca == null) continue;
                 bool lcaIsBone = !HasRenderer(lca) || bones.Contains(lca);
@@ -279,9 +276,8 @@ namespace FbxExporter
             bool deformed = md != null && smr != null &&
                             ((md.HasSkin && smr.bones.Length > 0) || (_o.ExportBlendShapes && md.BlendShapes.Count > 0));
 
-            // Importers (Blender in particular) re-parent deformed meshes under their armature, which breaks any
-            // children of that mesh. So a deformed mesh with children becomes an empty node (keeping the name and
-            // children) plus a separate "<name>_Mesh" child carrying the geometry.
+            // Blender re-parents deformed meshes under their armature, which detaches their children.
+            // A deformed mesh with children is split into an empty node plus a "<name>_Mesh" child holding the geometry.
             bool split = deformed && HasExportedChildren(t);
 
             string type = md != null && !split ? "Mesh" : (_limbs.Contains(t) ? "LimbNode" : "Null");
@@ -671,11 +667,9 @@ namespace FbxExporter
         // ================================================================== skinning
 
         /// <summary>
-        /// Unity stores a bind pose per mesh, so meshes sharing bones may have been bound with the skeleton in
-        /// different places (e.g. a head mesh authored at the origin, then attached to the body). FBX importers like
-        /// Blender keep one rest pose per bone, which stretches such meshes. Here every bone gets a single bind
-        /// matrix: the largest mesh defines it, other meshes are fitted through shared bones (or, with none shared,
-        /// through the hierarchy), and ApplySkinCorrection moves their vertices to match.
+        /// Gives every bone a single bind matrix, since Unity stores one bind pose per mesh but Blender keeps one
+        /// rest pose per bone. The largest mesh defines it; other meshes are fitted through shared bones, or through
+        /// the hierarchy when none are shared. ApplySkinCorrection then moves their vertices to match.
         /// </summary>
         private void ComputeCanonicalBinds()
         {
@@ -686,8 +680,7 @@ namespace FbxExporter
                 if (s != null && s.sharedMesh != null && s.bones.Length > 0) smrs.Add(s);
             }
 
-            // The largest mesh (usually the body) defines the rest pose; the others are fitted to it.
-            // Where the whole rest frame ends up is fixed afterwards by AlignBindFramesToArmatures.
+            // The largest mesh defines the rest pose; the others are fitted to it.
             var orderIndex = new Dictionary<SkinnedMeshRenderer, int>();
             for (int i = 0; i < smrs.Count; i++) orderIndex[smrs[i]] = i;
             smrs.Sort((a, b) =>
@@ -729,8 +722,7 @@ namespace FbxExporter
                     if (!hasOffset) { offset = ti; hasOffset = true; }
                     else spread = Mathf.Max(spread, MaxDifference(offset, ti));
                 }
-                // No shared bones: fit through the hierarchy instead (e.g. an ear/accessory prefab skinned to its
-                // own bones, attached under the head and bound in a different pose than the body).
+                // No shared bones: fit through the hierarchy instead.
                 if (!hasOffset && _canonicalBind.Count > 0 && TryHierarchyOffset(binds, out var hierarchyOffset))
                 {
                     offset = hierarchyOffset;
@@ -749,9 +741,8 @@ namespace FbxExporter
         }
 
         /// <summary>
-        /// Removes scale between a bone's rest pose and its parent's (e.g. a head scaled 1.13x when the hair
-        /// was bound), which Blender bones can't store. Each such bone's whole subtree is scaled about the bone,
-        /// so meshes within the subtree stay exact; the current scale then shows up as pose scale instead.
+        /// Removes scale between a bone's rest pose and its parent's, which Blender bones can't store.
+        /// The bone's subtree is scaled about the bone and the current scale is exported as pose scale.
         /// </summary>
         private void NormalizeRelativeBindScales()
         {
@@ -782,11 +773,9 @@ namespace FbxExporter
         }
 
         /// <summary>
-        /// Moves each skeleton's whole bind frame so that, relative to its armature node (the parent of the
-        /// topmost bone), the rest pose has no scale and the top bone rests where it currently is.
-        /// Blender bones can't store scale in their rest pose, so a skeleton bound at scale 1 under an armature
-        /// node that is now scaled (e.g. 1.0078 for a character's height) would otherwise import slightly off.
-        /// Meshes follow automatically through ApplySkinCorrection, so the skinned result is unchanged.
+        /// Moves each skeleton's bind frame so that, relative to its armature node (the parent of the topmost bone),
+        /// the rest pose has no scale and the top bone rests where it currently is.
+        /// Meshes follow through ApplySkinCorrection, so the skinned result is unchanged.
         /// </summary>
         private void AlignBindFramesToArmatures()
         {
@@ -830,9 +819,8 @@ namespace FbxExporter
         }
 
         /// <summary>
-        /// Skeleton nodes no mesh is weighted to (e.g. a "Mouth_Root" above weighted mouth bones) still need a rest
-        /// pose consistent with their bound neighbours. Derive it from a bound parent (parentBind * local), or
-        /// from a bound child (childBind * childLocal^-1), instead of using the node's current world position.
+        /// Gives skeleton nodes that no mesh is weighted to a rest pose, derived from a bound parent
+        /// (parentBind * local) or a bound child (childBind * childLocal^-1).
         /// </summary>
         private void FillUnboundLimbBinds()
         {
@@ -866,9 +854,8 @@ namespace FbxExporter
         private static Matrix4x4 LocalMatrix(Transform t) => Matrix4x4.TRS(t.localPosition, t.localRotation, t.localScale);
 
         /// <summary>
-        /// For a mesh sharing no bones with the already placed skeleton: find the closest placed ancestor
-        /// (or descendant) of one of its bones, predict that bone's rest from the current relative transform,
-        /// and return the offset mapping the mesh's own bind onto that prediction.
+        /// For a mesh sharing no bones with the placed skeleton: finds the closest placed ancestor or descendant of
+        /// one of its bones and returns the offset mapping the mesh's bind onto the rest pose predicted from it.
         /// </summary>
         private bool TryHierarchyOffset(List<(Transform bone, Matrix4x4 bind)> binds, out Matrix4x4 offset)
         {
@@ -915,10 +902,8 @@ namespace FbxExporter
         }
 
         /// <summary>
-        /// Re-expresses a skinned mesh's vertices for the shared bind poses. Each bone i has a correction
-        /// K_i = meshWorld^-1 * C_i * bindpose_i (identity when the mesh was bound exactly like the shared
-        /// skeleton), and each vertex moves by the weighted blend of its bones' corrections. That is exact
-        /// whenever a vertex's bones agree (e.g. a rigid offset of the whole mesh, or single-bone vertices).
+        /// Moves a skinned mesh's vertices to match the shared bind poses. Bone i has a correction
+        /// K_i = meshWorld^-1 * C_i * bindpose_i, and each vertex moves by the weighted blend of its bones' corrections.
         /// </summary>
         private void ApplySkinCorrection(MeshData md, SkinnedMeshRenderer smr)
         {
@@ -1028,8 +1013,7 @@ namespace FbxExporter
             skin.Add("Link_DeformAcuracy", 50.0);
             ConnectOO(skinId, gi.Id);
 
-            // Ancestors of the bones (skeleton parents and the armature node) also go into the bind pose, using
-            // their current world matrix. Blender needs the armature's bind matrix to place the skinned mesh.
+            // Bone ancestors (including the armature node) are added to the bind pose with their current world matrix.
             var ancestors = new List<Transform>();
             var inPose = new HashSet<Transform>(boneOrder);
             foreach (var b in boneOrder)
@@ -1077,8 +1061,7 @@ namespace FbxExporter
         }
 
         /// <summary>
-        /// World matrix of the node an importer turns into the armature: the parent of the topmost LimbNode
-        /// above this bone, or identity when the skeleton starts at the scene root.
+        /// World matrix of the armature node (parent of the topmost limb above this bone), or identity at the scene root.
         /// </summary>
         private Matrix4x4 ArmatureWorld(Transform bone)
         {
