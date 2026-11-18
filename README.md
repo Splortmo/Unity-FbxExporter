@@ -87,7 +87,7 @@ if (!result.Success) Debug.LogError(result.Error);
 
 - Meshes must have **Read/Write enabled**: WebGL can't read GPU buffers back, so non-readable meshes are skipped with a warning.
 - The zip is built in memory (stored, not compressed), so very large exports need enough browser memory.
-- `ExportAndDownload` only works in WebGL player builds; elsewhere use `Export` with a path.
+- In the Editor (including with the build target set to WebGL) `ExportAndDownload` opens a save dialog and writes the `.fbx` and texture folder to disk. In other player builds use `Export` with a path.
 
 ## Read/Write (non-readable) meshes
 

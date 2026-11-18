@@ -76,7 +76,8 @@ namespace FbxExporter
         /// browser download. With textures that is a zip (the .fbx plus its texture folder, so extracting it into any
         /// folder keeps the texture links working); without textures it is the plain .fbx.
         /// Browsers don't let a page write into an arbitrary folder, so the user picks the folder when saving/extracting.
-        /// Only available in WebGL player builds; elsewhere the result fails with a NotSupportedException.
+        /// In the Editor (e.g. build target set to WebGL) it opens a save dialog and writes the .fbx and textures to the chosen folder instead.
+        /// Elsewhere the result fails with a NotSupportedException.
         /// </summary>
         /// <param name="fileName">Download name, e.g. "character" or "character.fbx".</param>
         public static FbxExportResult ExportAndDownload(string fileName, IEnumerable<GameObject> objects, FbxExportOptions options = null)
@@ -110,11 +111,18 @@ namespace FbxExporter
                 catch (Exception) { /* best effort */ }
             }
             return result;
+#elif UNITY_EDITOR
+            // Editor (e.g. with the build target set to WebGL): no browser, so save to disk instead.
+            string defaultName = Path.GetFileNameWithoutExtension(string.IsNullOrWhiteSpace(fileName) ? "export" : fileName);
+            string path = UnityEditor.EditorUtility.SaveFilePanel("Export FBX", "", defaultName + ".fbx", "fbx");
+            if (string.IsNullOrEmpty(path))
+                return new FbxExportResult { Success = false, Error = new OperationCanceledException("Export cancelled.") };
+            return Export(path, objects, options);
 #else
             return new FbxExportResult
             {
                 Success = false,
-                Error = new NotSupportedException("ExportAndDownload is only available in WebGL player builds. Use Export() with a file path.")
+                Error = new NotSupportedException("ExportAndDownload is only available in WebGL player builds and the Editor. Use Export() with a file path.")
             };
 #endif
         }
