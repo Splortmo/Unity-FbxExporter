@@ -31,8 +31,9 @@ if (!result.Success) Debug.LogError(result.Error);
 foreach (var w in result.Warnings) Debug.LogWarning(w);
 ```
 
-`FbxExport` is the only entry point. Relative paths are resolved against the current working directory, so for player builds
-pass an absolute path (e.g. under `Application.persistentDataPath`). Must be called on the main thread.
+`FbxExport.Export` is the only entry point, on every platform (see [WebGL](#webgl) for how it behaves there).
+Relative paths are resolved against the current working directory, so for player builds pass an absolute path
+(e.g. under `Application.persistentDataPath`). Must be called on the main thread.
 
 ## Options (`FbxExportOptions`)
 
@@ -76,18 +77,20 @@ pass an absolute path (e.g. under `Application.persistentDataPath`). Must be cal
 
 ## WebGL
 
-In a WebGL build a page can't write into a folder, so use `ExportAndDownload`. It exports in the browser's temporary
-file system and starts a browser download: a zip containing the `.fbx` and its texture folder (or just the `.fbx`
-when there are no textures or they are embedded). Extract the zip into any folder and the texture links keep working.
+Use the same `FbxExport.Export` call. A page can't write into a folder, so in a WebGL player build the export is
+written to the browser's temporary file system and then downloaded: a zip containing the `.fbx` and its texture folder
+(or just the `.fbx` when there are no textures or they are embedded). Only the file name of the path is used.
+Extract the zip into any folder and the texture links keep working.
 
 ```csharp
-var result = FbxExport.ExportAndDownload("character", new[] { character }, new FbxExportOptions());
+var result = FbxExport.Export("character.fbx", new[] { character }, new FbxExportOptions());
 if (!result.Success) Debug.LogError(result.Error);
 ```
 
+- `result.FilePath` is the downloaded file name (`character.fbx` or `character.zip`); `result.TextureFiles` is empty because the temporary files are deleted after the download.
 - Meshes must have **Read/Write enabled**: WebGL can't read GPU buffers back, so non-readable meshes are skipped with a warning.
 - The zip is built in memory (stored, not compressed), so very large exports need enough browser memory.
-- In the Editor (including with the build target set to WebGL) `ExportAndDownload` opens a save dialog and writes the `.fbx` and texture folder to disk. In other player builds use `Export` with a path.
+- In the Editor, also with the build target set to WebGL, `Export` writes to the given path like on desktop.
 
 ## Read/Write (non-readable) meshes
 

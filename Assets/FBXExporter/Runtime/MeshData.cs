@@ -54,7 +54,9 @@ namespace FbxExporter
 
 #if UNITY_WEBGL && !UNITY_EDITOR
             // WebGL can't read GPU buffers back, so the mesh itself must be Read/Write enabled.
-            warnings.Add($"Mesh '{mesh.name}' is not Read/Write enabled, which WebGL needs to export it. Enable Read/Write in its import settings.");
+            warnings.Add(mesh.isReadable
+                ? $"Mesh '{mesh.name}' could not be read and WebGL has no GPU readback fallback; it was skipped."
+                : $"Mesh '{mesh.name}' is not Read/Write enabled, which WebGL needs to export it. Enable Read/Write in its import settings.");
             return null;
 #else
             try

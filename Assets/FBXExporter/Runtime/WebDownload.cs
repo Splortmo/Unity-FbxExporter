@@ -27,13 +27,17 @@ namespace FbxExporter
 #endif
         }
 
-        /// <summary>A single file is downloaded as itself, several as one zip. Entry names are relative to baseDir.</summary>
-        public static void DownloadFiles(IList<string> files, string baseDir, string zipName)
+        /// <summary>
+        /// A single file is downloaded as itself, several as one zip. Entry names are relative to baseDir.
+        /// Returns the name of the downloaded file.
+        /// </summary>
+        public static string DownloadFiles(IList<string> files, string baseDir, string zipName)
         {
             if (files.Count == 1)
             {
-                Download(Path.GetFileName(files[0]), File.ReadAllBytes(files[0]), "application/octet-stream");
-                return;
+                string name = Path.GetFileName(files[0]);
+                Download(name, File.ReadAllBytes(files[0]), "application/octet-stream");
+                return name;
             }
             using (var stream = new MemoryStream())
             {
@@ -44,6 +48,7 @@ namespace FbxExporter
                 }
                 Download(zipName, stream.ToArray(), "application/zip");
             }
+            return zipName;
         }
 
         private static string RelativePath(string baseDir, string file)
